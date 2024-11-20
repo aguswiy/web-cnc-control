@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control CNC via TCP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    #container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 18px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #ccc;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .status {
+      margin-top: 20px;
+      font-size: 16px;
+      text-align: center;
+    }
+  </style>
+  <script>
+    let socket;
+    let isConnected = false;
+
+    // Fungsi untuk menghubungkan ke CNC melalui WebSocket
+    function connectToCNC() {
+      socket = new WebSocket('ws://192.168.1.100:8080');  // Ganti dengan IP Wemos D1 R1
+
+      socket.onopen = () => {
+        isConnected = true;
+        updateConnectionStatus();
+      };
+
+      socket.onmessage = (event) => {
+        console.log('Message from CNC:', event.data);
+        if (event.data.trim() === "ok") {
+          console.log("CNC is ready for the next command.");
+        }
+      };
+
+      socket.onerror = (error) => {
+        console.error('WebSocket Error:', error);
+        isConnected = false;
+        updateConnectionStatus();
+      };
+
+      socket.onclose = () => {
+        isConnected = false;
+        updateConnectionStatus();
+        console.log('Disconnected from CNC');
+      };
+    }
+
+    // Fungsi untuk mengirim G-code
+    function sendGCode() {
+      const gcode = document.getElementById("gcodeInput").value;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log("Sending G-code:", gcode);
+        socket.send(gcode);
+        document.getElementById("gcodeInput").value = '';  // Clear input field
+      } else {
+        alert("WebSocket is not connected!");
+      }
+    }
+
+    // Fungsi untuk mengupdate status koneksi
+    function updateConnectionStatus() {
+      const statusText = isConnected ? 'Connected to CNC' : 'Disconnected from CNC';
+      const statusElement = document.getElementById("status");
+      statusElement.textContent = statusText;
+      document.getElementById("connectButton").disabled = isConnected;
+    }
+
+    // Fungsi untuk mengirimkan perintah untuk menghubungkan dan mengirim G-code
+    window.onload = function() {
+      connectToCNC();
+    };
+  </script>
+</head>
+<body>
+  <div id="container">
+    <h1>Control CNC</h1>
+    <button id="connectButton" onclick="connectToCNC()">Connect to CNC</button>
+
+    <textarea id="gcodeInput" rows="4" placeholder="Enter G-code command"></textarea>
+    <button onclick="sendGCode()" id="sendButton">Send G-code</button>
+
+    <div class="status" id="status">Connecting...</div>
+  </div>
+</body>
+</html>
